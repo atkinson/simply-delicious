@@ -1,0 +1,17 @@
+<script>
+
+Delicious = {
+    add: function(tab){
+        var url = 'http://delicious.com/save?url='+encodeURIComponent(tab.url)+'&title='+encodeURIComponent(tab.title)+'&v=5&jump=yes'      
+        console.log('delicious: '+url);
+        chrome.tabs.create({'url': url });
+    }
+};
+
+
+chrome.browserAction.onClicked.addListener(function(tab) {
+  Delicious.add(tab);
+});
+
+</script>
+
