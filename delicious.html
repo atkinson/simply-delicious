@@ -1,4 +1,4 @@
-<!-->
+<!--
     Copyright 2009 Rich Atkinson
     
     This program is free software: you can redistribute it and/or modify
@@ -16,21 +16,76 @@
 -->
 <script>
 
+Chromium = {
+    folderName: 'Simply Delicious',
+    folderID: 0,
+    _BOOKMARK_BAR: '1',
+    _OTHER_BOOKMARKS: '2',
+    init: function(callback){  //TODO: Needs to use local storage instead
+	chrome.bookmarks.search(Chromium.folderName, function(results){
+	    if(results.length > 0) {
+		Chromium.folderID = results[0].id;
+		console.log('found folder: '+ Chromium.folderID);
+		callback && callback();
+	    } else {
+		chrome.bookmarks.create({'parentId':Chromium._OTHER_BOOKMARKS, 'title':Chromium.folderName}, function(newFolder) {
+		    Chromium.folderID = newFolder.id;
+		    console.log('created new folder: '+ Chromium.folderID);
+		    callback && callback();
+		});
+	    }
+	});
+    },
+    sync: function(){
+	for (var i = 0; i < Delicious.posts.length; i++) {
+	    Chromium.insert(Delicious.posts[i]);
+	};
+	console.log('Delicious sync complete');
+    },
+    insert: function(post){
+	chrome.bookmarks.search(post.u, function(results){
+	    if(results.length == 0) chrome.bookmarks.create({'parentId':Chromium.folderID, 'title':post.d, 'url':post.u});
+	});
+    }
+}
+
 Delicious = {
+    user: 'rich.atkinson',
+    posts: [],
     add: function(tab){
-        chrome.tabs.getSelected(null, function(tab){
-            var url = 'http://delicious.com/save?url='+encodeURIComponent(tab.url)+'&title='+encodeURIComponent(tab.title)+'&v=5&jump=yes'      
-            console.log('delicious: '+url);
-            //chrome.tabs.create({'url': url });
-            chrome.tabs.update(tab.id, {'url': url});
-        });
+      chrome.tabs.getSelected(null, function(tab){
+	  var url = 'http://delicious.com/save?url='+encodeURIComponent(tab.url)+'&title='+encodeURIComponent(tab.title)+'&v=5&jump=yes'; console.log('delicious: '+url);
+	  chrome.tabs.create({'url': url });
+	  //chrome.tabs.update(tab.id, {'url': url});
+      });
+    },
+
+    sync: function(uname, callback){
+      var uname = uname || Delicious.user;
+      var url = 'http://feeds.delicious.com/v2/json/' + uname + '?count=100'; console.log('requested '+url);
+      var xhr = new XMLHttpRequest();
+      xhr.open("GET", url, true);
+      xhr.send();
+      xhr.onreadystatechange = function() {
+	if (xhr.readyState == 4) {
+	    Delicious.posts = JSON.parse(xhr.responseText);
+	    Chromium.init(function(){ 
+		console.log('Chromium inited, syncing...');
+		Chromium.sync();
+	    });
+	};
+      }
     }
 };
 
 
 chrome.browserAction.onClicked.addListener(function(tab) {
-  Delicious.add(tab);
+    Delicious.add(tab);
 });
+
+
+Delicious.sync();
+
 
 </script>
 

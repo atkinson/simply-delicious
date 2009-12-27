@@ -1,6 +1,6 @@
 {
   "name": "Simply Delicious",
-  "version": "1.1",
+  "version": "2.0",
   "description": "Fat free delicious bookmarking",
   "background_page": "delicious.html",
   "browser_action": {
@@ -10,6 +10,6 @@
       "48": "icon_48.png",
       "128": "icon_128.png"
   },
-  "permissions": ["tabs", "http://delicious.com/", "https://api.del.icio.us/"],
+  "permissions": ["tabs", "bookmarks", "http://delicious.com/", "http://feeds.delicious.com/"],
   "update_url": "http://jetfar.com/chrome/delicious/updates.xml" 
 }
