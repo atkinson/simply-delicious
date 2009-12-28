@@ -18,8 +18,9 @@
 <script>
 
 // TODO
-// LocalStorage
-// OptionsPage
+// Separate initiation from loading history.
+// I think if setting up the bookmarks folder was done at a different time to loading bookmarks, we wouldn't have a problem.
+// OptionsPage - username, password, load all bookmarks, add "tags" to titles, save in a new tab?
 
 Chromium = {
     folderName: 'Simply Delicious',
@@ -32,7 +33,7 @@ Chromium = {
 	    chrome.bookmarks.create({'parentId':Chromium._OTHER_BOOKMARKS, 'title':Chromium.folderName}, function(newFolder){
 		localStorage["folderID"] = newFolder.id;
 	    });
-	    setTimeout("callback && callback()",1250); // very dirty hack - Stupid chrome.bookmarks.create doesn't pass callbacks along
+	    setTimeout("callback && callback()",250); // very dirty hack - Stupid chrome.bookmarks.create doesn't pass callbacks along
 	    	    
     },
     init: function(callback){
@@ -41,12 +42,13 @@ Chromium = {
 		    chrome.bookmarks.get(Chromium.folderID(), function(results){
 			if(results && results.length && results[0].title == Chromium.folderName) {
 			    console.log('found folder: '+ results[0].title);
-			    callback && callback();
 			} else {
-			    Chromium._createFolder(callback);
-			}
+			    Chromium._createFolder();
+			};
 		    });
+		    callback && callback();
 		} catch(e) {
+		  console.log(e);
 		  Chromium._createFolder(callback);
 		};
 	    } else {
@@ -57,13 +59,13 @@ Chromium = {
 	for (var i = 0; i < Delicious.posts.length; i++) {
 	    var url = Delicious.posts[i].href;
 	    var title = Delicious.posts[i].description;
-	    var tags = Delicious.posts[i].tag
-	    Chromium.insert(Delicious.posts[i]);
+	    var tags = Delicious.posts[i].tag;
+	    Chromium.insert(url, title, tags);
 	};
 	console.log('Delicious sync complete');
     },
     insert: function(url, title, tags){
-	var label = title + ' tags:[' + tags + ']';
+	var label = title + ' (' + tags + ')';
 	chrome.bookmarks.search(url, function(results){
 	    if(results.length == 0) chrome.bookmarks.create({'parentId':Chromium.folderID(), 'title':label, 'url':url});
 	});
@@ -128,8 +130,13 @@ chrome.browserAction.onClicked.addListener(function(tab) {
 });
 
 
-Delicious.sync();
-
+//Delicious.sync();
+Delicious.apiPostsAll('rich.atkinson', 'passwd', function(){
+    Chromium.init(function(){ 
+	console.log('Chromium inited, syncing...');
+	Chromium.sync();
+    });
+});
 
 </script>
 
