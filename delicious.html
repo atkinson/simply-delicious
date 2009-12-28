@@ -55,14 +55,17 @@ Chromium = {
     },
     sync: function(){
 	for (var i = 0; i < Delicious.posts.length; i++) {
+	    var url = Delicious.posts[i].href;
+	    var title = Delicious.posts[i].description;
+	    var tags = Delicious.posts[i].tag
 	    Chromium.insert(Delicious.posts[i]);
 	};
 	console.log('Delicious sync complete');
     },
-    insert: function(post){
-	var title = post.d + ' (' + post.t.toString() + ')';
-	chrome.bookmarks.search(post.u, function(results){
-	    if(results.length == 0) chrome.bookmarks.create({'parentId':Chromium.folderID(), 'title':title, 'url':post.u});
+    insert: function(url, title, tags){
+	var label = title + ' tags:[' + tags + ']';
+	chrome.bookmarks.search(url, function(results){
+	    if(results.length == 0) chrome.bookmarks.create({'parentId':Chromium.folderID(), 'title':label, 'url':url});
 	});
     }
 }
@@ -108,7 +111,8 @@ Delicious = {
 		if (xhr.readyState == 4) {
 		    if (xhr.status == 200) {
 			var data = XMLObjectifier.xmlToJSON(xhr.responseXML);
-			callback && callback(data.post);  //data.post is an array
+			Delicious.posts = data.post;
+			callback && callback();  //data.post is an array
 		    } else {
 			console.log("There was a problem retrieving the XML data:\n" + xhr.statusText);
 		    }
