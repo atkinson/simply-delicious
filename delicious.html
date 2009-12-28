@@ -1,5 +1,5 @@
 <!--
-    Copyright 2009 Rich Atkinson
+    Copyright 2009 Rich Atkinson http://jetfar.com/
     
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,25 +16,41 @@
 -->
 <script>
 
+// TODO
+// LocalStorage
+// OptionsPage
+
 Chromium = {
     folderName: 'Simply Delicious',
-    folderID: 0,
+    folderID: function(){return localStorage["folderID"]},
     _BOOKMARK_BAR: '1',
     _OTHER_BOOKMARKS: '2',
-    init: function(callback){  //TODO: Needs to use local storage instead
-	chrome.bookmarks.search(Chromium.folderName, function(results){
-	    if(results.length > 0) {
-		Chromium.folderID = results[0].id;
-		console.log('found folder: '+ Chromium.folderID);
-		callback && callback();
+
+    _createFolder: function(callback){
+	    localStorage["folderID"] = undefined;
+	    chrome.bookmarks.create({'parentId':Chromium._OTHER_BOOKMARKS, 'title':Chromium.folderName}, function(newFolder){
+		localStorage["folderID"] = newFolder.id;
+	    });
+	    setTimeout("callback && callback()",1250); // very dirty hack - Stupid chrome.bookmarks.create doesn't pass callbacks along
+	    	    
+    },
+    init: function(callback){
+	    if(Chromium.folderID()) {
+		try {
+		    chrome.bookmarks.get(Chromium.folderID(), function(results){
+			if(results && results.length && results[0].title == Chromium.folderName) {
+			    console.log('found folder: '+ results[0].title);
+			    callback && callback();
+			} else {
+			    Chromium._createFolder(callback);
+			}
+		    });
+		} catch(e) {
+		  Chromium._createFolder(callback);
+		};
 	    } else {
-		chrome.bookmarks.create({'parentId':Chromium._OTHER_BOOKMARKS, 'title':Chromium.folderName}, function(newFolder) {
-		    Chromium.folderID = newFolder.id;
-		    console.log('created new folder: '+ Chromium.folderID);
-		    callback && callback();
-		});
-	    }
-	});
+		Chromium._createFolder(callback);
+	    };
     },
     sync: function(){
 	for (var i = 0; i < Delicious.posts.length; i++) {
@@ -43,8 +59,9 @@ Chromium = {
 	console.log('Delicious sync complete');
     },
     insert: function(post){
+	var title = post.d + ' (' + post.t.toString() + ')';
 	chrome.bookmarks.search(post.u, function(results){
-	    if(results.length == 0) chrome.bookmarks.create({'parentId':Chromium.folderID, 'title':post.d, 'url':post.u});
+	    if(results.length == 0) chrome.bookmarks.create({'parentId':Chromium.folderID(), 'title':title, 'url':post.u});
 	});
     }
 }
