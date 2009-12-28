@@ -10,6 +10,10 @@
       "48": "icon_48.png",
       "128": "icon_128.png"
   },
-  "permissions": ["tabs", "bookmarks", "http://delicious.com/", "http://feeds.delicious.com/"],
+  "permissions": ["tabs", "bookmarks", 
+		  "https://api.del.icio.us/",
+		  "http://delicious.com/",
+		  "http://feeds.delicious.com/"
+		 ],
   "update_url": "http://jetfar.com/chrome/delicious/updates.xml" 
 }

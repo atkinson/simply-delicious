@@ -14,6 +14,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -->
+<script type="text/javascript" src="saXMLUtils.js"></script>
 <script>
 
 // TODO
@@ -92,7 +93,29 @@ Delicious = {
 	    });
 	};
       }
-    }
+    },
+
+    // Delicious.apiPostsAll('rich.atkinson', 'passwd', function(posts){console.log(posts);});
+    apiPostsAll: function(user, passwd, callback){
+	var user = user || localStorage['delicious_user'];
+	var passwd = passwd || localStorage['delicious_passwd'];
+	if (user && passwd) {
+	    var url = 'https://'+user+':'+passwd+'@api.del.icio.us/v1/posts/all';
+	    var xhr = new XMLHttpRequest();
+	    xhr.open("GET", url, true);
+	    xhr.send();
+	    xhr.onreadystatechange = function() {
+		if (xhr.readyState == 4) {
+		    if (xhr.status == 200) {
+			var data = XMLObjectifier.xmlToJSON(xhr.responseXML);
+			callback && callback(data.post);  //data.post is an array
+		    } else {
+			console.log("There was a problem retrieving the XML data:\n" + xhr.statusText);
+		    }
+		};
+	    };
+	} else throw "user or passwd missing";
+    },
 };
 
 
