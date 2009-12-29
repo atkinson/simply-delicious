@@ -3,6 +3,7 @@
   "version": "2.0",
   "description": "Fat free delicious bookmarking",
   "background_page": "delicious.html",
+  "options_page": "options.html",
   "browser_action": {
     "default_icon": "delicious.20.gif"
   },
