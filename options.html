@@ -1,0 +1,163 @@
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Simply Delicious Options</title>
+
+        <link type="text/css" rel="stylesheet" media="screen" href="baseline.compress.css">
+        <!--<script type="text/javascript" src="scripts/html5.js"></script>-->
+
+        <style>
+
+#page           {margin:0 auto; text-align:center;}
+#branding       {margin-top: 25px; position: relative;}
+#branding h1    {position: absolute; left:0; top: 75px; margin-left: 140px; font-size: 45px; color: #535353;}
+.stroke         { border-top: solid 4px #bcd; margin-top: 14px;padding-top: 18px; }
+.right          {text-align: right;}
+.center         {margin:0 auto; text-align: center;}
+.indent         {margin-left: 25px;}
+
+        </style>
+
+        <script type="text/javascript" src="jquery-1.3.2.min.js"></script>
+        <script type="text/javascript">
+
+SimplyDelicious = {
+    prefs: {},
+    defaults: {
+	username: '',
+	password: '',
+        newtab: 'on',
+        copylocal: 'on',
+        tags: 'desc',
+        schedule: 0,
+	ts: '000000'
+    },
+    store: function(callback){
+	SimplyDelicious.prefs.ts = new Date().getTime();
+        localStorage['prefs'] = JSON.stringify(SimplyDelicious.prefs);
+	console.log('preferences saved');
+        callback && callback();
+    },
+    load: function(callback){
+	var data = localStorage['prefs'] || JSON.stringify(SimplyDelicious.defaults);
+        SimplyDelicious.prefs = JSON.parse(data);
+        callback && callback();
+    },
+    populate: function(callback){
+        $("#username").val(SimplyDelicious.prefs.username);
+        $("#password").val(SimplyDelicious.prefs.password);
+        $("#newtab").attr('checked', SimplyDelicious.prefs.newtab);
+        $("#copylocal").attr('checked', SimplyDelicious.prefs.copylocal);
+	var tagSelector = "input[value=" + SimplyDelicious.prefs.tags + "]";
+        $(tagSelector).attr('checked', true);
+	var schedSelector = "input[value=" + SimplyDelicious.prefs.schedule + "]";
+        $(schedSelector).attr('checked', true);
+        callback && callback();
+    },
+    savechanges: function(callback){
+        SimplyDelicious.prefs.username = $("#username").val();
+        SimplyDelicious.prefs.password = $("#password").val();
+        SimplyDelicious.prefs.newtab = $("#newtab").attr('checked');
+        SimplyDelicious.prefs.copylocal = $("#copylocal").attr('checked');
+        SimplyDelicious.prefs.tags = $("input[name='tags']:checked").val();
+        SimplyDelicious.prefs.schedule = $("input[name='schedule']:checked").val();
+        SimplyDelicious.store(callback);
+    },
+    factoryreset: function(callback){
+	SimplyDelicious.prefs = SimplyDelicious.defaults;
+	SimplyDelicious.populate(callback);
+    },
+}
+
+
+$(document).ready(function(){
+    SimplyDelicious.load( function(){
+	SimplyDelicious.populate( function(){
+	    console.log('options page inited');
+	});
+    });
+});
+
+        </script>
+
+    </head>
+
+    <body>
+        <div id="page">
+            <div id="branding" class="column width4 first">
+                <img src="icon_128.png"/>
+                <h1>Simply Delicious</h1>
+            </div>
+
+            <div id="main-content" class="column width4 first layout-grid stroke">
+                    <fieldset class="column width2 first">
+                        <legend>Account</legend>
+                        <label class="width1 first field-first">
+                            Delicious Username
+                            <input id="username" type="text" name="username" class="text" />
+                        </label>
+
+                        <label class="width1 field">
+                            Password
+                            <input id="password" type="password" name="password" class="text" />
+                        </label>
+
+                        <div class="width2 first right"><button>check</button></div>
+                    </fieldset>
+
+                    <fieldset class="column width2 last">
+                        <legend>About</legend>
+                        <p>Simply Delicious is a simple, unobtrusive way to use your delicious bookmarks from within Chrome.</p>
+                    </fieldset>
+
+                     <fieldset class="column width2 first">
+                        <legend>Options</legend>
+                        <input id="newtab" type="checkbox" name="newtab" class="checkbox" />
+                        <label for="newtab" class="checkbox-label">Open a new tab when posting to Delicious</label>
+
+                        <input id="copylocal" type="checkbox" name="copylocal" class="checkbox" />
+                        <label for="copylocal" class="checkbox-label">Keep a local copy of my Delicious bookmarks in Chrome</label>
+
+                        <input id="rb1" type="radio" name="tags" value="desc" class="radio indent" />
+                        <label for="rb1" class="radio-label indent">Include tags in the description (better for searching)</label>
+
+                        <input id="rb2" type="radio" name="tags" value="folders" class="radio indent" />
+                        <label for="rb2" class="radio-label indent">Organise tags using folders (creates duplicates)</label>
+
+                        <input id="rb2" type="radio" name="tags" value="ignore" class="radio indent" />
+                        <label for="rb2" class="radio-label indent">Ignore tags</label>
+                    </fieldset>
+
+                    <fieldset class="column width2 last">
+                    <legend>Synchronisation Schedule</legend>
+                        <input id="sync1" type="radio" name="schedule" value="900" class="radio" />
+                        <label for="sync1" class="radio-label">Synchronise every 15 minutes</label>
+
+                        <input id="sync2" type="radio" name="schedule" value="1800" class="radio" />
+                        <label for="sync2" class="radio-label">Synchronise every 30 minutes</label>
+
+                        <input id="sync3" type="radio" name="schedule" value="3600" class="radio" />
+                        <label for="sync3" class="radio-label">* Synchronise every hour <strong>(recommended)</strong></label>
+
+                        <input id="sync4" type="radio" name="schedule" value="10800" class="radio" />
+                        <label for="sync4" class="radio-label">Synchronise every 3 hours</label>
+
+                        <input id="sync5" type="radio" name="schedule" value="0" class="radio" />
+                        <label for="sync5" class="radio-label">Don't Synchronise</label>
+                    </fieldset>
+
+                    <div class="column width4 first right">
+			<button onclick="SimplyDelicious.factoryreset();">reset to defaults</button>
+			<button onclick="SimplyDelicious.savechanges();">save changes</button>
+		    </div>
+
+
+
+            <footer class="width4 clear stroke">
+                <p class="center"><small>This program comes with ABSOLUTELY NO WARRANTY; for details see <a rel="license" href="http://www.gnu.org/licenses/gpl-3.0.html">the GPL license</a>. This is free software, and you are welcome to redistribute it under certain conditions.</small></p>
+                <p class="center"><small>Logos and brand names are copyright of their respective owners. This page built using <a href="http://baselinecss.com/">baselinecss.com</a></small></p>
+                <p class="center"><small>&copy; 2009 Rich Atkinson, <a href="http://jetfar.com" target="_blank">jetfar.com</a>.Source code available at <a href="http://github.com/atkinson/simply-delicious/">github</a>.</small></p>
+            </footer>
+        </div>
+    </body>
+</html>
