@@ -1,3 +1,4 @@
+<html>
 <!--
     Copyright 2009 Rich Atkinson http://jetfar.com/
     
@@ -14,8 +15,10 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -->
+
+<head>
 <script type="text/javascript" src="saXMLUtils.js"></script>
-<script type="text/javascript" src="jquery-1.3.2.min.js"></script>
+<script type="text/javascript" src="jquery-1.3.2.js"></script>
 <script type="text/javascript" src="simplydelicious.js"></script>
 
 <script>
@@ -25,13 +28,16 @@ chrome.browserAction.onClicked.addListener(function(tab) {
 });
 
 
-//Delicious.sync();
-Delicious.apiPostsAll('rich.atkinson', 'passwd', function(){
-    Chromium.init(function(){ 
-	console.log('Chromium inited, syncing...');
-	Chromium.sync();
+$(document).ready(function(){
+    SimplyDelicious.load( function(){
+ 	Chromium.init(function(){ 
+ 	    console.log('Simply Delicious inited');
+ 	});
     });
 });
 
 </script>
-
+</head>
+<body>
+</body>
+</html>

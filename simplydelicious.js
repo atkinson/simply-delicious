@@ -3,8 +3,8 @@ SimplyDelicious = {
     defaults: {
 	username: '',
 	password: '',
-        newtab: 'on',
-        copylocal: 'on',
+        newtab: true,
+        copylocal: true,
         tags: 'desc',
         schedule: '3600',
 	ts: '000000'
@@ -44,6 +44,18 @@ SimplyDelicious = {
 	SimplyDelicious.prefs = SimplyDelicious.defaults;
 	SimplyDelicious.populate(callback);
     },
+    test: function(callback){
+	$('#testresult').remove();
+	$('#test').before('<img id="loading" src="loading.gif" width="16px" height="16px"/>');
+	Delicious.apiUpdate(function(data){
+	    $('#loading').remove();
+	    if(data.time){
+		$('#test').before('<span id="testresult">OK</span>');
+	    } else {
+		$('#test').before('<span id="testresult">Fail</span>');
+	    }
+	});
+    }
 }
 
 Chromium = {
@@ -57,7 +69,7 @@ Chromium = {
 	    chrome.bookmarks.create({'parentId':Chromium._OTHER_BOOKMARKS, 'title':Chromium.folderName}, function(newFolder){
 		localStorage["folderID"] = newFolder.id;
 	    });
-	    setTimeout("callback && callback()",250); // very dirty hack - Stupid chrome.bookmarks.create doesn't pass callbacks along
+	    callback && callback() // dirty hack - Stupid chrome.bookmarks.create doesn't pass callbacks along
 	    	    
     },
     init: function(callback){
@@ -97,34 +109,18 @@ Chromium = {
 }
 
 Delicious = {
-    user: 'rich.atkinson',
     posts: [],
     add: function(tab){
       chrome.tabs.getSelected(null, function(tab){
 	  var url = 'http://delicious.com/save?url='+encodeURIComponent(tab.url)+'&title='+encodeURIComponent(tab.title)+'&v=5&jump=yes'; console.log('delicious: '+url);
-	  chrome.tabs.create({'url': url });
-	  //chrome.tabs.update(tab.id, {'url': url});
+	  if(SimplyDelicious.prefs.newtab){
+	      chrome.tabs.create({'url': url });
+	  } else {
+	      chrome.tabs.update(tab.id, {'url': url});
+	  };
       });
     },
 
-    sync: function(uname, callback){
-      var uname = uname || Delicious.user;
-      var url = 'http://feeds.delicious.com/v2/json/' + uname + '?count=100'; console.log('requested '+url);
-      var xhr = new XMLHttpRequest();
-      xhr.open("GET", url, true);
-      xhr.send();
-      xhr.onreadystatechange = function() {
-	if (xhr.readyState == 4) {
-	    Delicious.posts = JSON.parse(xhr.responseText);
-	    Chromium.init(function(){ 
-		console.log('Chromium inited, syncing...');
-		Chromium.sync();
-	    });
-	};
-      }
-    },
-
-    // Delicious.apiPostsAll(function(posts){console.log(posts);});
     apiPostsAll: function(callback){
 	var user = SimplyDelicious.prefs.username;
 	var passwd = SimplyDelicious.prefs.password;
@@ -168,5 +164,4 @@ Delicious = {
 	    };
 	} else throw "user or passwd missing";
     }
-
 };
