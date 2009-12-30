@@ -23,16 +23,18 @@
 
 <script>
 
+// Listener for the Browser Extension.
 chrome.browserAction.onClicked.addListener(function(tab) {
     Delicious.add(tab);
 });
 
 
+// Extension init's here.
 $(document).ready(function(){
     SimplyDelicious.load( function(){
- 	Chromium.init(function(){ 
- 	    console.log('Simply Delicious inited');
- 	});
+     	Chromium.init(function(){ 
+     	    SD.log('Simply Delicious inited');
+     	});
     });
 });
 
