@@ -16,7 +16,7 @@ SimplyDelicious = {
         schedule: '3600',
     ts: '000000'
     },
-    store: function(callback){
+    store: function(callback){  // <--------------------------------------------- TODO: After a save (from opts), we need to send a message to the extn to reload.
         SimplyDelicious.prefs.ts = new Date().getTime();
         localStorage['prefs'] = JSON.stringify(SimplyDelicious.prefs);
         SD.log('preferences saved');
@@ -53,15 +53,17 @@ SimplyDelicious = {
     },
     test: function(callback){
         $('#testresult').remove();
-        $('#test').before('<img id="loading" src="loading.gif" width="16px" height="16px"/>');
-        Delicious.apiUpdate(function(data){ //TODO Make into a message to background
+        $('#checking').remove();
+        $('#test').before('<span id="checking">checking...</span>');
+        chrome.extension.sendRequest({action: "test"}, function(response) {
             $('#loading').remove();
-            if(data.time){
-                $('#test').before('<span id="testresult">OK</span>');
+            if(response.test){
+                $('#test').before('<span id="testresult" class="good">OK</span>');
             } else {
-                $('#test').before('<span id="testresult">Fail</span>');
+                $('#test').before('<span id="testresult" class="bad">Fail</span>');
             }
         });
+        callback && callback();
     }
 }
 
@@ -137,16 +139,15 @@ Delicious = {
                 if (xhr.status == 200) {
                     var data = XMLObjectifier.xmlToJSON(xhr.responseXML);
                     Delicious.posts = data.post;
-                    callback && callback();  //data.post is an array
                 } else {
                     SD.log("There was a problem retrieving the XML data:\n" + xhr.statusText);
                 }
             };
             };
-        } else throw "user or passwd missing";
+        } else callback && callback();
     },
 
-
+    // returns a short message with the dat of last updated. Keep to compare.
     apiUpdate: function(callback){
         var user = SimplyDelicious.prefs.username;
         var passwd = SimplyDelicious.prefs.password;
@@ -158,33 +159,30 @@ Delicious = {
             xhr.onreadystatechange = function() {
                 if (xhr.readyState == 4) {
                     if (xhr.status == 200) {
-                        var data = XMLObjectifier.xmlToJSON(xhr.responseXML);
-                        callback && callback(data);  //data.post is an array
+                        var data = XMLObjectifier.xmlToJSON(xhr.responseXML);   //TODO - what to do with it?
                     } else {
                         SD.log("There was a problem retrieving the XML data:\n" + xhr.statusText);
                     };
                 };
             };
-        } else throw "user or passwd missing";
+        } else callback && callback();
     },
-    
-
     // NOTE: Only use this in background context. Invoke via messages.
-    login: function(user,passwd,callback){
+    login: function(){
+        var user = SimplyDelicious.prefs.username;
+        var passwd = SimplyDelicious.prefs.password;
         var url ='https://' + user + ':' + passwd + '@api.del.icio.us/v1/posts/update';
         var options = {
-                'timeout': 3000,
-                    'url': url
+                    'url': url,
+                  'async': false,           // <----------------------------------------- TODO: timeout does not seem to be respected here.
+                'timeout': 5000
                 };
-        var xhr = $.ajax(options, function(data, status){
-            SD.log(data);
-        });
-        xhr.onreadystatechange = function(){
-            if (this.statusText == 'OK') {
-                Delicious.checked = true;
-            } else {
-                Delicious.checked = false;
-            };
+        var xhr = $.ajax(options);
+        if (xhr.statusText == 'OK') {
+            Delicious.checked = true;
+        } else {
+            Delicious.checked = false;
         };
+        return Delicious.checked;  //or if no callback
     }
 };
