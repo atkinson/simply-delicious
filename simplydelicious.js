@@ -1,3 +1,21 @@
+//
+//    Copyright 2009 Rich Atkinson http://jetfar.com/
+//    
+//    This program is free software: you can redistribute it and/or modify
+//    it under the terms of the GNU General Public License as published by
+//    the Free Software Foundation, either version 3 of the License, or
+//    (at your option) any later version.
+//
+//    This program is distributed in the hope that it will be useful,
+//    but WITHOUT ANY WARRANTY; without even the implied warranty of
+//    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//    GNU General Public License for more details.
+//
+//    You should have received a copy of the GNU General Public License
+//    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+//
+
+// SD - a shorthand utility object
 SD = {
     log: function(text){
         var now = new Date().getTime();
@@ -5,6 +23,7 @@ SD = {
     }
 }
 
+// SimplyDelicious - Options, the UI etc.
 SimplyDelicious = {
     prefs: {},
     defaults: {
@@ -14,12 +33,13 @@ SimplyDelicious = {
         copylocal: true,
         tags: 'desc',
         schedule: '3600',
-    ts: '000000'
+    	ts: '000000'
     },
-    store: function(callback){  // <--------------------------------------------- TODO: After a save (from opts), we need to send a message to the extn to reload.
+    store: function(callback){
         SimplyDelicious.prefs.ts = new Date().getTime();
         localStorage['prefs'] = JSON.stringify(SimplyDelicious.prefs);
         SD.log('preferences saved');
+        MQ.send('save');
         callback && callback();
     },
     load: function(callback){
@@ -51,19 +71,21 @@ SimplyDelicious = {
         SimplyDelicious.prefs = SimplyDelicious.defaults;
         SimplyDelicious.populate(callback);
     },
-    test: function(callback){
+    test: function(){
         $('#testresult').remove();
         $('#checking').remove();
         $('#test').before('<span id="checking">checking...</span>');
-        chrome.extension.sendRequest({action: "test"}, function(response) {
-            $('#loading').remove();
-            if(response.test){
-                $('#test').before('<span id="testresult" class="good">OK</span>');
-            } else {
-                $('#test').before('<span id="testresult" class="bad">Fail</span>');
+        MQ.send("logintest");
+        MQ.listener(
+            function(msg) {
+                $('#loading').remove();
+                if(msg.event == 'logintest.OK')
+                    $('#test').before('<span id="testresult" class="good">OK</span>')
+                else if(msg.event == 'logintest.FAIL')
+                    $('#test').before('<span id="testresult" class="bad">Fail</span>')
+                else SD.log('recieved mesage but not understood: ' + msg.event)
             }
-        });
-        callback && callback();
+        );
     }
 }
 
@@ -73,26 +95,27 @@ Chromium = {
     _BOOKMARK_BAR: '1',     // These should really be Chrome constants
     _OTHER_BOOKMARKS: '2',  // Hope they don't change!
 
-    _createFolder: function(callback){
+    _createFolder: function(){
         localStorage["folderID"] = undefined;
-        chrome.bookmarks.create({'parentId':Chromium._OTHER_BOOKMARKS, 'title':Chromium.folderName}, function(newFolder){
-            localStorage["folderID"] = newFolder.id;
-        });
-        callback && callback() // dirty hack - Stupid chrome.bookmarks.create doesn't pass callbacks along
-                
+        chrome.bookmarks.create(
+                                {'parentId':Chromium._OTHER_BOOKMARKS,
+                                 'title':Chromium.folderName
+                                }, 
+                                function(newFolder){
+                                    localStorage["folderID"] = newFolder.id;
+                                }
+        );
     },
-    init: function(callback){
+    init: function(){
         if(Chromium.folderID()) {
-            chrome.bookmarks.get(Chromium.folderID(), function(results){
-                if(results && results.length && results[0].title == Chromium.folderName) {
-                    SD.log('Simply Delicious folder found with id: '+ results[0].id);
-                } else {
-                    Chromium._createFolder();
-                };
-            });
-            callback && callback();
+            chrome.bookmarks.get(Chromium.folderID(), 
+                function(res){
+                    var exists = (res && res.length && res[0].title == Chromium.folderName)
+                    if (!exists) Chromium._createFolder(); // TODO tidy this shit up
+                }
+            );
         } else {
-            Chromium._createFolder(callback);
+            Chromium._createFolder();
         };
     },
     sync: function(){
@@ -159,7 +182,8 @@ Delicious = {
             xhr.onreadystatechange = function() {
                 if (xhr.readyState == 4) {
                     if (xhr.status == 200) {
-                        var data = XMLObjectifier.xmlToJSON(xhr.responseXML);   //TODO - what to do with it?
+                        var data = XMLObjectifier.xmlToJSON(xhr.responseXML);
+                        //TODO - what to do with it?
                     } else {
                         SD.log("There was a problem retrieving the XML data:\n" + xhr.statusText);
                     };
@@ -167,22 +191,49 @@ Delicious = {
             };
         } else callback && callback();
     },
-    // NOTE: Only use this in background context. Invoke via messages.
+    // NOTE: Only use this in background. Invoke via MQ.send('logintest')
     login: function(){
         var user = SimplyDelicious.prefs.username;
         var passwd = SimplyDelicious.prefs.password;
         var url ='https://' + user + ':' + passwd + '@api.del.icio.us/v1/posts/update';
         var options = {
-                    'url': url,
-                  'async': false,           // <----------------------------------------- TODO: timeout does not seem to be respected here.
+                'url':     url,
                 'timeout': 5000
                 };
         var xhr = $.ajax(options);
-        if (xhr.statusText == 'OK') {
-            Delicious.checked = true;
-        } else {
-            Delicious.checked = false;
-        };
-        return Delicious.checked;  //or if no callback
+        SD.log('testing delicious creds');
+        xhr.onreadystatechange = function(){ // TODO this aint working
+            if (xhr.readyState == 4) {
+                if (xhr.statusText == 'OK') {
+                    SD.log('creds OK');
+                    MQ.send('logintest.OK');
+                } else {
+                    SD.log('creds FAIL');
+                    MQ.send('logintest.FAIL '+ xhr.statusText);
+                }
+            }
+        }
     }
 };
+
+
+MQ = {
+    port: undefined, // the connection port
+    
+    send: function(evt, callback){
+        if (MQ.port == undefined)
+            MQ.port = chrome.extension.connect({name:"messages"});
+        MQ.port.postMessage({event:evt});
+        callback && callback();
+    },
+    
+    listener: function(callback){
+        MQ.port.onMessage.addListener(callback);
+    }
+};
+
+
+
+
+
+

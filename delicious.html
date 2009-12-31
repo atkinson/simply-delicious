@@ -1,48 +1,54 @@
-<html>
-<!--
-    Copyright 2009 Rich Atkinson http://jetfar.com/
-    
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
--->
-
-<head>
+<html><head>
 <script type="text/javascript" src="saXMLUtils.js"></script>
 <script type="text/javascript" src="jquery-1.3.2.min.js"></script>
 <script type="text/javascript" src="simplydelicious.js"></script>
-
 <script>
+//
+//    Copyright 2009 Rich Atkinson http://jetfar.com/
+//    
+//    This program is free software: you can redistribute it and/or modify
+//    it under the terms of the GNU General Public License as published by
+//    the Free Software Foundation, either version 3 of the License, or
+//    (at your option) any later version.
+//
+//    This program is distributed in the hope that it will be useful,
+//    but WITHOUT ANY WARRANTY; without even the implied warranty of
+//    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//    GNU General Public License for more details.
+//
+//    You should have received a copy of the GNU General Public License
+//    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+//
+
 
 // Listener for the Browser Extension.
 chrome.browserAction.onClicked.addListener(function(tab) {
     Delicious.add(tab);
 });
 
-// Listener for a "test" request from the options page.
-chrome.extension.onRequest.addListener(
-    function(request, sender, sendResponse) {
-        if (request.action == "test") {
-            var result = Delicious.login();
-            sendResponse({test: result});
-        }
-    });
+// Listen for events from the options page 
+chrome.extension.onConnect.addListener(
+    function(port){
+        console.assert(port.name == 'messages');
+        port.onMessage.addListener(
+            function(msg){
+                if (msg.event && msg.event == 'save') // prefs need updating
+                    SimplyDelicious.load()
+                else if (msg.event && msg.event =='logintest') // check creds
+                    Delicious.login()          
+                else {
+                    SD.log('unhandled message: ' + msg);
+                }
+            }
+        )
+    }
+);
 
 // Extension init's here.
 $(document).ready(function(){
     SimplyDelicious.load( function(){
-     	Chromium.init(function(){ 
-     	    SD.log('Simply Delicious inited');
-     	});
+     	Chromium.init(); 
+     	SD.log('Simply Delicious inited');
     });
 });
 
